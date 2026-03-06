@@ -2,3 +2,4 @@ streamlit
 requests
 plotly
 numpy
+streamlit-autorefresh
