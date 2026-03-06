@@ -1,99 +1,87 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
 import plotly.graph_objects as go
+import numpy as np
 
-st.set_page_config(page_title="Wind Monitor BMKG Jatim", layout="wide")
-
-# =========================
-# WMO STATION BMKG JATIM
-# =========================
+st.set_page_config(page_title="Wind Compass Jatim", layout="wide")
 
 stations = {
-    "Juanda":96935,
-    "Banyuwangi":96987,
-    "Bawean":96925,
-    "Kalianget":96973,
-    "Staklim Malang":96943,
-    "Pacitan":96925,
-    "Trunojoyo":96973,
-    "Tuban":96939,
-    "Nganjuk":96975,
-    "Stageof Karangkates":96949,
-    "Perak":96933
+    "Juanda":"WARR",
+    "Banyuwangi":"WADY",
+    "Malang":"WARA",
+    "Trunojoyo":"WATR",
+    "Bawean":"WBAW",
+    "Kalianget":"WIMA",
+    "Pacitan":"WARP",
+    "Tuban":"WBTB",
+    "Nganjuk":"WING",
+    "Sumenep":"WIAS",
+    "Kediri":"WIDK"
 }
 
 # =========================
-# GET SYNOP OGIMET
+# GET WIND DATA
 # =========================
 
-def get_synop(wmo):
+def get_wind(icao):
 
-    url=f"https://ogimet.com/display_synops2.php?lang=en&lugar={wmo}"
+    url=f"https://aviationweather.gov/api/data/metar?ids={icao}&format=json"
 
     try:
+        r=requests.get(url,timeout=10).json()
 
-        r=requests.get(url,timeout=10)
+        if len(r)==0:
+            return None,None
 
-        soup=BeautifulSoup(r.text,"html.parser")
-
-        table=soup.find("table")
-
-        rows=table.find_all("tr")
-
-        latest=rows[1].find_all("td")[-1].text
-
-        return latest
-
-    except:
-
-        return None
-
-
-# =========================
-# PARSE WIND
-# =========================
-
-def parse_wind(synop):
-
-    try:
-
-        groups=synop.split()
-
-        wind=groups[2]
-
-        direction=int(wind[1:3])*10
-        speed=int(wind[3:5])
+        direction=r[0]["wdir"]
+        speed=r[0]["wspd"]
 
         return direction,speed
 
     except:
-
         return None,None
 
 
 # =========================
-# SPEEDOMETER
+# WIND COMPASS
 # =========================
 
-def wind_gauge(speed,title):
+def wind_compass(direction,speed,title):
 
-    fig=go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=speed,
-        title={'text':title},
-        gauge={
-            'axis':{'range':[0,40]},
-            'steps':[
-                {'range':[0,10],'color':"#00ff9f"},
-                {'range':[10,20],'color':"#ffee00"},
-                {'range':[20,30],'color':"#ff9900"},
-                {'range':[30,40],'color':"#ff0000"},
-            ]
-        }
+    rad=np.radians(direction)
+
+    x=np.cos(rad)
+    y=np.sin(rad)
+
+    fig=go.Figure()
+
+    # arrow
+    fig.add_trace(go.Scatter(
+        x=[0,x],
+        y=[0,y],
+        mode="lines+markers",
+        line=dict(width=6),
+        marker=dict(size=10),
     ))
 
-    fig.update_layout(height=250)
+    # compass circle
+    theta=np.linspace(0,2*np.pi,200)
+    fig.add_trace(go.Scatter(
+        x=np.cos(theta),
+        y=np.sin(theta),
+        mode="lines",
+        line=dict(width=2)
+    ))
+
+    fig.update_layout(
+        title=f"{title}<br>{speed} kt",
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        height=300,
+        showlegend=False,
+    )
+
+    fig.update_yaxes(scaleanchor="x", scaleratio=1)
 
     return fig
 
@@ -102,31 +90,29 @@ def wind_gauge(speed,title):
 # DASHBOARD
 # =========================
 
-st.title("🌬️ Wind Monitoring BMKG Jawa Timur (SYNOP Ogimet)")
+st.title("🌬️ Wind Compass Jawa Timur")
 
 cols=st.columns(3)
 
 i=0
 
-for name,wmo in stations.items():
+for name,icao in stations.items():
 
-    synop=get_synop(wmo)
-
-    direction,speed=parse_wind(synop)
+    direction,speed=get_wind(icao)
 
     with cols[i%3]:
 
-        if speed is not None:
+        if direction is not None:
 
             st.plotly_chart(
-                wind_gauge(speed,name),
+                wind_compass(direction,speed,name),
                 use_container_width=True
             )
 
-            st.caption(f"Direction : {direction}°")
+            st.caption(f"Direction : {direction}° | Speed : {speed} kt")
 
         else:
 
-            st.error("Data tidak tersedia")
+            st.error("No data")
 
     i+=1
