@@ -10,17 +10,17 @@ st.set_page_config(page_title="Wind Monitor BMKG Jatim", layout="wide")
 # =========================
 
 stations = {
-    "Juanda":96933,
-    "Banyuwangi":96935,
-    "Bawean":96937,
+    "Juanda":96935,
+    "Banyuwangi":96987,
+    "Bawean":96925,
     "Kalianget":96973,
-    "Malang":96987,
+    "Staklim Malang":96943,
     "Pacitan":96925,
-    "Sumenep":96975,
-    "Trunojoyo":96939,
-    "Tuban":96991,
-    "Nganjuk":96983,
-    "Karangkates":96989
+    "Trunojoyo":96973,
+    "Tuban":96939,
+    "Nganjuk":96975,
+    "Stageof Karangkates":96949,
+    "Perak":96933
 }
 
 # =========================
