@@ -1,57 +1,75 @@
 import streamlit as st
 import requests
-import re
+from bs4 import BeautifulSoup
 import numpy as np
 import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
 
-st.set_page_config(page_title="Wind Compass Jawa Timur", layout="wide")
+st.set_page_config(page_title="Wind SYNOP Jatim", layout="wide")
 
-# refresh setiap 60 detik
-st_autorefresh(interval=60000, key="refresh")
+# refresh tiap 10 menit
+st_autorefresh(interval=600000, key="refresh")
+
+# =========================
+# WMO STATION JAWA TIMUR
+# =========================
 
 stations = {
-    "Juanda": "WARR",
-    "Banyuwangi": "WADY",
-    "Malang": "WARA",
-    "Trunojoyo": "WATR",
-    "Bawean": "WBAW",
-    "Kalianget": "WIMA",
-    "Pacitan": "WARP",
-    "Tuban": "WBTB",
-    "Nganjuk": "WING",
-    "Sumenep": "WIAS",
-    "Kediri": "WIDK"
+    "Juanda": 96935,
+    "Banyuwangi": 96933,
+    "Bawean": 96937,
+    "Kalianget": 96973,
+    "Malang": 96987,
+    "Pacitan": 96925,
+    "Trunojoyo": 96939,
+    "Tuban": 96991,
+    "Nganjuk": 96983,
+    "Karangkates": 96989
 }
 
 # =========================
-# GET METAR NOAA TXT
+# GET SYNOP OGIMET
 # =========================
 
-def get_wind(station):
+def get_synop(wmo):
 
-    url=f"https://tgftp.nws.noaa.gov/data/observations/metar/stations/{station}.TXT"
+    url=f"https://ogimet.com/display_synops2.php?lang=en&lugar={wmo}"
 
     try:
 
         r=requests.get(url,timeout=10)
 
-        lines=r.text.split("\n")
+        soup=BeautifulSoup(r.text,"html.parser")
 
-        metar=lines[1]
+        table=soup.find("table")
 
-        wind=re.search(r"(\d{3})(\d{2})KT",metar)
+        rows=table.find_all("tr")
 
-        if wind:
+        latest=rows[1].find_all("td")[-1].text
 
-            direction=int(wind.group(1))
-            speed=int(wind.group(2))
+        return latest
 
-            return direction,speed
+    except:
 
-        else:
+        return None
 
-            return None,None
+
+# =========================
+# PARSE WIND SYNOP
+# =========================
+
+def parse_wind(synop):
+
+    try:
+
+        groups=synop.split()
+
+        wind=groups[2]
+
+        direction=int(wind[1:3])*10
+        speed=int(wind[3:5])
+
+        return direction,speed
 
     except:
 
@@ -71,9 +89,9 @@ def wind_compass(direction,speed,title):
 
     fig=go.Figure()
 
-    # lingkaran kompas
     theta=np.linspace(0,2*np.pi,200)
 
+    # circle
     fig.add_trace(go.Scatter(
         x=np.cos(theta),
         y=np.sin(theta),
@@ -81,7 +99,7 @@ def wind_compass(direction,speed,title):
         line=dict(width=3,color="white")
     ))
 
-    # panah arah angin
+    # arrow
     fig.add_trace(go.Scatter(
         x=[0,x],
         y=[0,y],
@@ -91,7 +109,7 @@ def wind_compass(direction,speed,title):
     ))
 
     fig.update_layout(
-        title=f"{title}<br>{speed} kt",
+        title=f"{title}<br>{speed} m/s",
         height=300,
         showlegend=False,
         xaxis=dict(visible=False),
@@ -110,15 +128,17 @@ def wind_compass(direction,speed,title):
 # DASHBOARD
 # =========================
 
-st.title("🌬️ Wind Compass Monitoring Jawa Timur")
+st.title("🌬️ Wind Compass SYNOP Jawa Timur")
 
 cols=st.columns(3)
 
 i=0
 
-for name,code in stations.items():
+for name,wmo in stations.items():
 
-    direction,speed=get_wind(code)
+    synop=get_synop(wmo)
+
+    direction,speed=parse_wind(synop)
 
     with cols[i%3]:
 
@@ -129,10 +149,10 @@ for name,code in stations.items():
                 use_container_width=True
             )
 
-            st.caption(f"Direction : {direction}° | Speed : {speed} kt")
+            st.caption(f"Direction : {direction}° | Speed : {speed} m/s")
 
         else:
 
-            st.error("No METAR data")
+            st.error("No SYNOP data")
 
     i+=1
