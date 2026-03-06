@@ -3,10 +3,10 @@ import requests
 from bs4 import BeautifulSoup
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="BMKG Jatim Wind Monitor", layout="wide")
+st.set_page_config(page_title="Wind Monitor BMKG Jatim", layout="wide")
 
 # =========================
-# STATION WMO BMKG JATIM
+# WMO STATION BMKG JATIM
 # =========================
 
 stations = {
@@ -24,25 +24,29 @@ stations = {
 }
 
 # =========================
-# GET SYNOP FROM OGIMET
+# GET SYNOP OGIMET
 # =========================
 
 def get_synop(wmo):
 
-    url = f"https://ogimet.com/display_synops2.php?lang=en&lugar={wmo}&tipo=ALL"
+    url=f"https://ogimet.com/display_synops2.php?lang=en&lugar={wmo}"
 
     try:
 
-        r = requests.get(url, timeout=10)
+        r=requests.get(url,timeout=10)
 
-        soup = BeautifulSoup(r.text, "html.parser")
+        soup=BeautifulSoup(r.text,"html.parser")
 
-        pre = soup.find("pre")
+        table=soup.find("table")
 
-        if pre:
-            return pre.text
+        rows=table.find_all("tr")
+
+        latest=rows[1].find_all("td")[-1].text
+
+        return latest
 
     except:
+
         return None
 
 
@@ -54,38 +58,37 @@ def parse_wind(synop):
 
     try:
 
-        groups = synop.split()
+        groups=synop.split()
 
-        wind = groups[2]
+        wind=groups[2]
 
-        direction = int(wind[1:3]) * 10
-        speed = int(wind[3:5])
+        direction=int(wind[1:3])*10
+        speed=int(wind[3:5])
 
-        return direction, speed
+        return direction,speed
 
     except:
 
-        return None, None
+        return None,None
 
 
 # =========================
-# SPEEDOMETER GAUGE
+# SPEEDOMETER
 # =========================
 
-def wind_gauge(speed, title):
+def wind_gauge(speed,title):
 
-    fig = go.Figure(go.Indicator(
+    fig=go.Figure(go.Indicator(
         mode="gauge+number",
         value=speed,
-        title={'text': title},
+        title={'text':title},
         gauge={
-            'axis': {'range': [0,40]},
-            'bar': {'color': "#00f2ff"},
-            'steps': [
+            'axis':{'range':[0,40]},
+            'steps':[
                 {'range':[0,10],'color':"#00ff9f"},
                 {'range':[10,20],'color':"#ffee00"},
                 {'range':[20,30],'color':"#ff9900"},
-                {'range':[30,40],'color':"#ff0000"}
+                {'range':[30,40],'color':"#ff0000"},
             ]
         }
     ))
@@ -96,22 +99,22 @@ def wind_gauge(speed, title):
 
 
 # =========================
-# UI
+# DASHBOARD
 # =========================
 
-st.title("🌬️ Wind Monitoring BMKG Jawa Timur")
+st.title("🌬️ Wind Monitoring BMKG Jawa Timur (SYNOP Ogimet)")
 
-cols = st.columns(3)
+cols=st.columns(3)
 
-i = 0
+i=0
 
 for name,wmo in stations.items():
 
-    synop = get_synop(wmo)
+    synop=get_synop(wmo)
 
-    direction,speed = parse_wind(synop)
+    direction,speed=parse_wind(synop)
 
-    with cols[i % 3]:
+    with cols[i%3]:
 
         if speed is not None:
 
@@ -126,4 +129,4 @@ for name,wmo in stations.items():
 
             st.error("Data tidak tersedia")
 
-    i += 1
+    i+=1
